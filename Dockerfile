@@ -11,4 +11,4 @@ COPY . .
 RUN python3 -m pip install --upgrade pip wheel
 RUN pip install -r requirements.txt
 
-CMD [ "python", "./detection.py"]
+CMD [ "python", "./detection_PR_curve.py"]

@@ -4,20 +4,22 @@ from ultralytics import YOLO
 import cv2
 import numpy as np
 import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
+matplotlib.use('Agg')
 
-from utils import get_labels, intersection_over_union,get_device
+import matplotlib.pyplot as plt
+from utils import get_labels, intersection_over_union, get_device
+
+
 
 if __name__ == '__main__':
     images_path = "data/images/"
     labels_path = "data/labels/"
     model = YOLO("yolov8m.pt")
 
-    objects_to_detect = [
-        ["pedestrians", {"person": 0}],
-        ["cars", {"car": 2, "bus": 5, "truck": 7}]
-    ]
+    objects_to_detect = {
+        "pedestrians": {"person": 0},
+        "cars": {"car": 2, "bus": 5, "truck": 7}
+    }
     colors = {
         "cars": (0, 0, 225),
         "pedestrians": (0, 225, 225)
@@ -26,30 +28,26 @@ if __name__ == '__main__':
         "cars": 0.5,
         "pedestrians": 0.8
     }
-    # thresholds_conf = {
-    #     "cars": 0.7,
-    #     "pedestrians": 0.7
-    # }
+    thresholds_conf = {
+        "cars": 0.7,
+        "pedestrians": 0.7
+    }
 
-    classes = [objects[0] for objects in objects_to_detect]
+    classes = list(objects_to_detect)
 
     # manual calculation precision recall curve
     confidences = []
-
 
     IoUs = {obj: [] for obj in classes}
     images_names = [f for f in listdir(images_path) if isfile(join(images_path, f))]
     # main part for evaluation of test dataset
     metrics_report = dict()
-      # , "FN"
     for cl in classes:
-        for m in ["TP", "FP"]:
+        for m in ["TP", "FP", "FN"]:
             metrics_report[f"{m}_{cl}"] = []
         metrics_report[f"confs_{cl}"] = []
 
-
-
-    for image_name in images_names:  # ["example.jpg"]
+    for image_name in images_names:
         # annotate needed images manually. Create new json for image if it doesn't exist.
         # if during annotation process you made a mistake,
         # delete this file or refactor it manually.
@@ -59,7 +57,7 @@ if __name__ == '__main__':
         params = get_labels(model=model, labels_path=labels_path,
                             objects_to_detect=objects_to_detect,
                             images_path=images_path,
-                            image_name=image_name, colors=colors)  # conf=thresholds_conf
+                            image_name=image_name, colors=colors, conf=thresholds_conf)
         for cl in classes:
             amount_of_objects = len(params[f"true_{cl}"])
 
@@ -69,20 +67,11 @@ if __name__ == '__main__':
             result = res[0]
             confs = np.array(result.boxes.conf.cpu())
             classes_ = np.array(result.boxes.cls.cpu(), dtype="int")
-            # for obj in objects_to_detect:
-            #     if obj[0] == cl:
-            #         ids = list(obj[1].values())
-            #         break
-            # confidences_for_group = []
+
             k = len(metrics_report[f"confs_{cl}"])
             for i in range(len(classes_)):
-                if classes_[i] in ids:
+                if classes_[i] in objects_to_detect[cl].values():
                     metrics_report[f"confs_{cl}"].append(confs[i])
-            if amount_of_objects!=len(metrics_report[f"confs_{cl}"])-k:
-                print(image_name)
-                print(amount_of_objects)
-                print(classes_)
-                # raise ValueError(len(metrics_report[f"confs_{cl}"]))
             for idx_obj in range(amount_of_objects):
                 true_area = params[f"true_{cl}"][idx_obj]
                 predicted_area = params[f"predicted_{cl}"][idx_obj]
@@ -90,15 +79,12 @@ if __name__ == '__main__':
                 # FP: model detects the object with IoU lower then threshold
                 # FP: the object is not there and the model detects it
                 # FN the object is there but model doesn't predict it.
-                # todo check objects are the same type.
-                # confidences.append(metrics_report[f"confs_{cl}"][idx_obj])
                 iou = None
 
                 if len(predicted_area) == 0:
                     metrics_report[f"FP_{cl}"].append(1)
                     metrics_report[f"TP_{cl}"].append(0)
                 elif len(true_area) == 0:
-                    # metrics_report[f"FN_{cl}"] += 1
                     pass
                 else:
                     iou = intersection_over_union(true_area, predicted_area)
@@ -109,42 +95,32 @@ if __name__ == '__main__':
                         metrics_report[f"FP_{cl}"].append(1)
                         metrics_report[f"TP_{cl}"].append(0)
                 IoUs[cl].append(iou)
-            print(len(metrics_report[f"confs_{cl}"]),len(metrics_report[f"TP_{cl}"]),len(metrics_report[f"FP_{cl}"]))
-            print()
-            print()
 
     for cl in classes:
         args = np.argsort(np.array(metrics_report[f"confs_{cl}"]))
         args = [int(i) for i in list(args[::-1])]
         confidences = [metrics_report[f"confs_{cl}"][i] for i in args]
-        print(len(confidences))
-        print(len(metrics_report[f"TP_{cl}"]))
-        print(len(metrics_report[f"FP_{cl}"]))
-        print(metrics_report)
         TPs = [metrics_report[f"TP_{cl}"][i] for i in args]
         FPs = [metrics_report[f"FP_{cl}"][i] for i in args]
+        FNs = 0  # model was able to recognice almost all objects
         accumulated_TP = np.cumsum(np.array(TPs))
         accumulated_FP = np.cumsum(np.array(FPs))
         precisions = []
+        recalls = []
+        # assume FN = 0, what means recall = 1
         for i in range(len(confidences)):
-            precisions.append(float(accumulated_TP[i]/(accumulated_TP[i]+accumulated_FP[i])))
-            # recalls.append(i)
-        print(precisions)
-        # print(recalls/len(recalls))
-
-        plt.plot(precisions)
+            precisions.append(
+                float(accumulated_TP[i] / (accumulated_TP[i] + accumulated_FP[i])))
+            recalls.append(
+                float(accumulated_TP[i] / (sum(metrics_report[f"TP_{cl}"]) + 0.)))
+        plt.plot(precisions, recalls)
         plt.title(cl)
+        plt.ylabel("Precision")
+        plt.xlabel("Recall")
 
-        plt.show()
+        plt.savefig(cl + ".png")
+        plt.close()
+    # https://www.youtube.com/watch?v=t98TA2RYQvw this video can be used to improve
+    # interpretability of Precision-Recall curve for comparison with other models
 
-    # print("\n\nReport for Skoltech object detection task.")
-    # for cl in classes:
-    #     TP = metrics_report[f"TP_{cl}"]
-    #     FP = metrics_report[f"FP_{cl}"]
-    #     FN = metrics_report[f"FN_{cl}"]
-    #     print(TP, FP, FN)
-    #     precision = TP / (TP + FP + 0.0001)
-    #     recall = TP / (TP + FN + 0.0001)
-    #
-    #     print(f"\n{cl} \n\tprecision: {precision:.2f}\n\trecall: {recall:.2f}")
-    #     print(f"threshold for TP {cl}: {thresholds_IoU[cl]}")
+    # docker build -t detection .
