@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from utils import get_labels, intersection_over_union, get_device
 
 
-
 if __name__ == '__main__':
     images_path = "data/images/"
     labels_path = "data/labels/"
@@ -123,4 +122,5 @@ if __name__ == '__main__':
     # https://www.youtube.com/watch?v=t98TA2RYQvw this video can be used to improve
     # interpretability of Precision-Recall curve for comparison with other models
 
-    # docker build -t detection .
+    # docker build -t detecKtion .
+    # docker run detection
