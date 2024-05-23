@@ -4,10 +4,12 @@ from ultralytics import YOLO
 import cv2
 import numpy as np
 import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 from utils import get_labels, intersection_over_union, get_device
 
-matplotlib.use('TkAgg')
+
 
 if __name__ == '__main__':
     images_path = "data/images/"
