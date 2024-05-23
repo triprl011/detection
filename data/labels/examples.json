@@ -1,0 +1,31 @@
+{
+    "true_cars": [
+        [ "the object presented in image and model classified it",
+            "it can be considered as TP of FP depending on threshold",
+            3,
+            5,
+            189,
+            158
+        ],
+        ["FP object is on picture but model doesn't predict it. In predicted objects empty list with this index",
+            118,
+            79,
+            172,
+            149
+        ],
+        []
+    ],
+    "predicted_cars": [
+        [
+            0,
+            1,
+            188,
+            157
+        ],
+        [],
+        [0,"the object is not there and the model detects it. In true objects empty list with this index.",
+        0,
+        50,
+        50]
+    ]
+}

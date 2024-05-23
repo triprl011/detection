@@ -1,0 +1,20 @@
+{
+    "true_pedestrians": [
+        [
+            89,
+            122,
+            101,
+            153
+        ]
+    ],
+    "predicted_pedestrians": [
+        [
+            88,
+            120,
+            101,
+            152
+        ]
+    ],
+    "true_cars": [],
+    "predicted_cars": []
+}
