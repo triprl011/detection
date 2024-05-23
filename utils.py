@@ -68,7 +68,7 @@ def intersection_over_union(true_box, pred_box):
 
 
 def get_labels(model: torch.nn.Module, images_path: str, labels_path: str,
-               objects_to_detect: list, image_name: str, colors: dict, conf:dict=None):
+               objects_to_detect: dict, image_name: str, colors: dict, conf:dict=None):
     """Method returns dict with ground true and predicted labels for objects for chosen
     image. If the label for specified image exists, return this file else asks to annotate
     ground true boxes for object. If you asked to annotate the object on image, click left
@@ -125,7 +125,7 @@ def get_labels(model: torch.nn.Module, images_path: str, labels_path: str,
 
         device = get_device()
         # get model predictions
-        results = model(img, device=device, conf=conf) if conf is not None \
+        results = model(img, device=device, conf=min(conf.values())) if conf is not None \
             else model(img, device=device)
 
         result = results[0]
@@ -137,18 +137,18 @@ def get_labels(model: torch.nn.Module, images_path: str, labels_path: str,
         print(confs)
 
         # define id of object groups
-        model_classes = {type_[0]: [] for type_ in objects_to_detect}
+        model_classes = {type_: [] for type_ in objects_to_detect}
         # expect to get dict: model_classes={"cars":[2,5,7],"pedestrians":[0]}
         for i in range(len(classes)):
-            for obj in objects_to_detect:
-                if classes[i] in obj[1].values():
-                    model_classes[obj[0]].append(i)
+            for type_ in objects_to_detect:
+                if classes[i] in objects_to_detect[type_].values():
+                    model_classes[type_].append(i)
 
         # prepare dict for json saving about objects of the current image
         params = dict()
         for object_type in objects_to_detect:
-            params["true_" + object_type[0]] = []
-            params["predicted_" + object_type[0]] = []
+            params["true_" + object_type] = []
+            params["predicted_" + object_type] = []
 
         i = 0
         # save predicted and ground true info about object
